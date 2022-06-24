@@ -1,0 +1,79 @@
+/*PICKS PER HOUR*/
+
+with CartPickTime (Name, ID, CartTime) as (
+    select
+        OP.operatorName,
+        PL.operatorId,
+        SUM(DATEDIFF(HOUR, startTime, endTime))
+    from
+        [HK_Numina_ proOperatorLog_raw] "PL"
+        Join HK_Numina_proOperators_raw "OP" on OP.operatorID = PL.operatorID
+    where
+        PL.task = 'cartpick'
+        and DATEDIFF(HOUR, startTime, endTime) > 0
+    GROUP BY
+        OP.operatorName,
+        PL.operatorId
+),
+CasePickTime (Name, ID, CaseTime) as (
+    select
+        OP.operatorName,
+        PL.operatorId,
+        SUM(DATEDIFF(HOUR, startTime, endTime))
+    from
+        [HK_Numina_ proOperatorLog_raw] "PL"
+        Join HK_Numina_proOperators_raw "OP" on OP.operatorID = PL.operatorID
+    where
+        PL.task in ('casepickw', 'casepickp')
+        and DATEDIFF(HOUR, startTime, endTime) > 0
+    GROUP BY
+        OP.operatorName,
+        PL.operatorId
+),
+AggCart (CartPicks, ID) as (
+    select
+        SUM(qty),
+        operatorId
+    from
+        HK_Numina_psPicks_raw
+    where
+        operatorId <> ''
+        and uom = 'ea'
+    GROUP BY
+        operatorId
+),
+AggCase (CasePicks, ID) as (
+    select
+        SUM(qty),
+        operatorId
+    from
+        HK_Numina_psPicks_raw
+    where
+        operatorId <> ''
+        and uom = 'cs'
+    GROUP BY
+        operatorId
+)
+select
+    CRT.Name 'Associate',
+    ACRT.CartPicks 'Total CartPicks',
+    CRT.CartTime 'Total CartPick Time',
+    ACS.CasePicks 'Total Case Picks',
+    CST.CaseTime 'Total CasePick Time',
+    format(
+        (
+            CONVERT(DECIMAL(7, 2), ACRT.CartPicks) / CONVERT(DECIMAL(7, 2), CRT.CartTime)
+        ) * 10,
+        'N2'
+    ) 'CartPPH',
+    format(
+        (
+            CONVERT(DECIMAL(7, 2), ACS.CasePicks) / CONVERT(DECIMAL(7, 2), CST.CaseTime)
+        ) * 10,
+        'N2'
+    ) 'CasePPH'
+from
+    CartPickTime "CRT"
+    join CasePickTime "CST" on CRT.ID = CST.ID
+    join AggCart "ACRT" on CRT.ID = ACRT.ID
+    join AggCase "ACS" on CST.ID = ACS.ID
