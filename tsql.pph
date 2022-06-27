@@ -1,5 +1,4 @@
 /*PICKS PER HOUR*/
-
 with CartPickTime (Name, ID, CartTime) as (
     select
         OP.operatorName,
@@ -63,15 +62,18 @@ select
     format(
         (
             CONVERT(DECIMAL(7, 2), ACRT.CartPicks) / CONVERT(DECIMAL(7, 2), CRT.CartTime)
-        ) * 10,
+        ) * 100,
         'N2'
     ) 'CartPPH',
-    format(
-        (
-            CONVERT(DECIMAL(7, 2), ACS.CasePicks) / CONVERT(DECIMAL(7, 2), CST.CaseTime)
-        ) * 10,
-        'N2'
-    ) 'CasePPH'
+    CASE
+        WHEN CST.CaseTime < 100 THEN 'INVALID'
+        ELSE format(
+            (
+                CONVERT(DECIMAL(7, 2), ACS.CasePicks) / CONVERT(DECIMAL(7, 2), CST.CaseTime)
+            ) * 100,
+            'N2'
+        )
+    END AS 'CasePPH'
 from
     CartPickTime "CRT"
     join CasePickTime "CST" on CRT.ID = CST.ID
