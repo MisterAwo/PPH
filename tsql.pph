@@ -62,7 +62,7 @@ select
     format(
         (
             CONVERT(DECIMAL(7, 2), ACRT.CartPicks) / CONVERT(DECIMAL(7, 2), CRT.CartTime)
-        ) * 100,
+        ) * 10,
         'N2'
     ) 'CartPPH',
     CASE
@@ -70,7 +70,7 @@ select
         ELSE format(
             (
                 CONVERT(DECIMAL(7, 2), ACS.CasePicks) / CONVERT(DECIMAL(7, 2), CST.CaseTime)
-            ) * 100,
+            ) * 10,
             'N2'
         )
     END AS 'CasePPH'
