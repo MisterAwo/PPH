@@ -5,8 +5,8 @@ with CartPickTime (Name, ID, CartTime) as (
         PL.operatorId,
         SUM(DATEDIFF(HOUR, startTime, endTime))
     from
-        [HK_Numina_ proOperatorLog_raw] "PL"
-        Join HK_Numina_proOperators_raw "OP" on OP.operatorID = PL.operatorID
+        NuminaData_BaseTables.dbo.[HK_Numina_ proOperatorLog_raw] "PL"
+        Join NuminaData_BaseTables.dbo.HK_Numina_proOperators_raw "OP" on OP.operatorID = PL.operatorID
     where
         PL.task = 'cartpick'
         and DATEDIFF(HOUR, startTime, endTime) > 0
@@ -20,8 +20,8 @@ CasePickTime (Name, ID, CaseTime) as (
         PL.operatorId,
         SUM(DATEDIFF(HOUR, startTime, endTime))
     from
-        [HK_Numina_ proOperatorLog_raw] "PL"
-        Join HK_Numina_proOperators_raw "OP" on OP.operatorID = PL.operatorID
+        NuminaData_BaseTables.dbo.[HK_Numina_ proOperatorLog_raw] "PL"
+        Join NuminaData_BaseTables.dbo.HK_Numina_proOperators_raw "OP" on OP.operatorID = PL.operatorID
     where
         PL.task in ('casepickw', 'casepickp')
         and DATEDIFF(HOUR, startTime, endTime) > 0
@@ -34,7 +34,7 @@ AggCart (CartPicks, ID) as (
         SUM(qty),
         operatorId
     from
-        HK_Numina_psPicks_raw
+        NuminaData_BaseTables.dbo.HK_Numina_psPicks_raw
     where
         operatorId <> ''
         and uom = 'ea'
@@ -46,7 +46,7 @@ AggCase (CasePicks, ID) as (
         SUM(qty),
         operatorId
     from
-        HK_Numina_psPicks_raw
+        NuminaData_BaseTables.dbo.HK_Numina_psPicks_raw
     where
         operatorId <> ''
         and uom = 'cs'
@@ -59,21 +59,24 @@ select
     CRT.CartTime 'Total CartPick Time',
     ACS.CasePicks 'Total Case Picks',
     CST.CaseTime 'Total CasePick Time',
-    format(
-        (
-            CONVERT(DECIMAL(7, 2), ACRT.CartPicks) / CONVERT(DECIMAL(7, 2), CRT.CartTime)
-        ) * 10,
-        'N2'
-    ) 'CartPPH',
     CASE
-        WHEN CST.CaseTime < 100 THEN 'INVALID'
+        WHEN ACRT.CartPicks < 3400 THEN 'Excluded'
+        ELSE format(
+            (
+                CONVERT(DECIMAL(7, 2), ACRT.CartPicks) / CONVERT(DECIMAL(7, 2), CRT.CartTime)
+            ) * 10,
+            'N2'
+        )
+    END AS 'Productivity Index - Ea',
+    CASE
+        WHEN CST.CaseTime < 205 THEN 'Excluded'
         ELSE format(
             (
                 CONVERT(DECIMAL(7, 2), ACS.CasePicks) / CONVERT(DECIMAL(7, 2), CST.CaseTime)
             ) * 10,
             'N2'
         )
-    END AS 'CasePPH'
+    END AS 'Productivity Index - Cases'
 from
     CartPickTime "CRT"
     join CasePickTime "CST" on CRT.ID = CST.ID
