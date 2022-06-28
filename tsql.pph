@@ -1,79 +1,31 @@
-/*PICKS PER HOUR*/
-
-with CartPickTime (Name, ID, CartTime) as (
-    select
-        OP.operatorName,
-        PL.operatorId,
-        SUM(DATEDIFF(HOUR, startTime, endTime))
-    from
-        [HK_Numina_ proOperatorLog_raw] "PL"
-        Join HK_Numina_proOperators_raw "OP" on OP.operatorID = PL.operatorID
-    where
-        PL.task = 'cartpick'
-        and DATEDIFF(HOUR, startTime, endTime) > 0
-    GROUP BY
-        OP.operatorName,
-        PL.operatorId
-),
-CasePickTime (Name, ID, CaseTime) as (
-    select
-        OP.operatorName,
-        PL.operatorId,
-        SUM(DATEDIFF(HOUR, startTime, endTime))
-    from
-        [HK_Numina_ proOperatorLog_raw] "PL"
-        Join HK_Numina_proOperators_raw "OP" on OP.operatorID = PL.operatorID
-    where
-        PL.task in ('casepickw', 'casepickp')
-        and DATEDIFF(HOUR, startTime, endTime) > 0
-    GROUP BY
-        OP.operatorName,
-        PL.operatorId
-),
-AggCart (CartPicks, ID) as (
-    select
-        SUM(qty),
-        operatorId
-    from
-        HK_Numina_psPicks_raw
-    where
-        operatorId <> ''
-        and uom = 'ea'
-    GROUP BY
-        operatorId
-),
-AggCase (CasePicks, ID) as (
-    select
-        SUM(qty),
-        operatorId
-    from
-        HK_Numina_psPicks_raw
-    where
-        operatorId <> ''
-        and uom = 'cs'
-    GROUP BY
-        operatorId
-)
 select
-    CRT.Name 'Associate',
-    ACRT.CartPicks 'Total CartPicks',
-    CRT.CartTime 'Total CartPick Time',
-    ACS.CasePicks 'Total Case Picks',
-    CST.CaseTime 'Total CasePick Time',
-    format(
-        (
-            CONVERT(DECIMAL(7, 2), ACRT.CartPicks) / CONVERT(DECIMAL(7, 2), CRT.CartTime)
-        ) * 10,
-        'N2'
-    ) 'CartPPH',
-    format(
-        (
-            CONVERT(DECIMAL(7, 2), ACS.CasePicks) / CONVERT(DECIMAL(7, 2), CST.CaseTime)
-        ) * 10,
-        'N2'
-    ) 'CasePPH'
+    R.operatorName 'PICKER',
+    case
+        when operation = 'pick-case' then 'CASE PICKS'
+        else 'CART PICKS'
+    end as 'PICK TYPE',
+    SUM (value) 'TOTAL PICKS',
+    FORMAT(startDate, 'yyyy') 'YEAR',
+    FORMAT(startDate, 'MMM') 'MONTH',
+    datediff(hour, MIN(stamp), MAX(stamp)) 'DURATION (HR)',
+    (
+        (convert (decimal(7, 0), SUM (value))) / (
+            convert(
+                decimal(7, 0),
+                datediff(HOUR, MIN(stamp), MAX(stamp))
+            )
+        )
+    ) 'PPH'
 from
-    CartPickTime "CRT"
-    join CasePickTime "CST" on CRT.ID = CST.ID
-    join AggCart "ACRT" on CRT.ID = ACRT.ID
-    join AggCase "ACS" on CST.ID = ACS.ID
+    NuminaData_BaseTables.dbo.[HK_Numina_proTracker_raw] "T"
+    join NuminaData_BaseTables.dbo.[HK_Numina_proOperators_raw] "R" on T.operatorID = R.operatorID
+GROUP BY
+    T.operatorID,
+    R.operatorName,
+    value,
+    startDate,
+    operation
+having
+    datediff(hour, MIN(stamp), MAX(stamp)) > 0
+order by
+    'PPH' desc;
