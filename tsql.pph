@@ -1,4 +1,4 @@
-/*PICKS PER HOUR*/
+/*ASSOCIATE EFFICIENCY - TOP LEVEL*/
 with CartPickTime (Name, ID, CartTime) as (
     select
         OP.operatorName,
@@ -60,23 +60,53 @@ select
     ACS.CasePicks 'Total Case Picks',
     CST.CaseTime 'Total CasePick Time',
     CASE
-        WHEN ACRT.CartPicks < 3400 THEN 'Excluded'
+        WHEN ACRT.CartPicks < 3400 THEN 'NPA'
         ELSE format(
             (
                 CONVERT(DECIMAL(7, 2), ACRT.CartPicks) / CONVERT(DECIMAL(7, 2), CRT.CartTime)
             ) * 10,
             'N2'
         )
-    END AS 'Productivity Index - Ea',
+    END AS 'Normalized PPH - Ea',
     CASE
-        WHEN CST.CaseTime < 205 THEN 'Excluded'
+        WHEN CST.CaseTime < 200 THEN 'NPA'
         ELSE format(
             (
                 CONVERT(DECIMAL(7, 2), ACS.CasePicks) / CONVERT(DECIMAL(7, 2), CST.CaseTime)
             ) * 10,
             'N2'
         )
-    END AS 'Productivity Index - Cases'
+    END AS 'Normalized PPH - Cases',
+    CASE
+        WHEN ACRT.CartPicks < 3400 THEN ''
+        ELSE format(
+            (
+                (
+                    (
+                        (
+                            CONVERT(DECIMAL(7, 2), ACRT.CartPicks) / CONVERT(DECIMAL(7, 2), CRT.CartTime)
+                        ) * 10
+                    ) / 60
+                ) * 100
+            ),
+            'N2'
+        )
+    END AS 'CartPick Efficiency (%)',
+    CASE
+        WHEN CST.CaseTime < 200 THEN ''
+        ELSE format(
+            (
+                (
+                    (
+                        (
+                            CONVERT(DECIMAL(7, 2), ACS.CasePicks) / CONVERT(DECIMAL(7, 2), CST.CaseTime)
+                        ) * 10
+                    ) / 100
+                ) * 100
+            ),
+            'N2'
+        )
+    END AS 'CasePick Efficiency (%)'
 from
     CartPickTime "CRT"
     join CasePickTime "CST" on CRT.ID = CST.ID
