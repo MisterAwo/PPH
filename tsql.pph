@@ -78,7 +78,7 @@ select
         )
     END AS 'Normalized PPH - Cases',
     CASE
-        WHEN ACRT.CartPicks < 3400 THEN ''
+        WHEN ACRT.CartPicks < 3400 THEN 'Non-CartPicker'
         ELSE format(
             (
                 (
@@ -93,7 +93,7 @@ select
         )
     END AS 'CartPick Efficiency (%)',
     CASE
-        WHEN CST.CaseTime < 200 THEN ''
+        WHEN CST.CaseTime < 200 THEN 'Non-CasePicker'
         ELSE format(
             (
                 (
